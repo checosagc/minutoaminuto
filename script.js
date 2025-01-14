@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const minutesIncrement = 5; // Minutes between each row
     const secondsIncrement = 0; // Seconds between each row
 
-    let startTime = new Date();
+    let startTime = new Date(); // Get the current time from the client
 
     function formatTime(date) {
         return date.toTimeString().split(' ')[0]; // Format as HH:MM:SS
@@ -40,30 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Function to update the time every 5 seconds using AJAX
+    // Function to update the time every 5 seconds
     function updateTime() {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', 'ajax/getTime.php', true); // Request to PHP file to get the current time
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                const newTime = xhr.responseText; // Server's response (time in HH:MM:SS)
-                const timeParts = newTime.split(':'); // Split time into hours, minutes, and seconds
-                
-                // Validate time format (ensure it's correct)
-                if (timeParts.length === 3) {
-                    startTime = new Date();
-                    startTime.setHours(parseInt(timeParts[0]));
-                    startTime.setMinutes(parseInt(timeParts[1]));
-                    startTime.setSeconds(parseInt(timeParts[2]));
-
-                    // Regenerate the table with the updated time
-                    generateTable(rowCount, users, categories);
-                } else {
-                    console.error('Invalid time format received from the server:', newTime);
-                }
-            }
-        };
-        xhr.send();
+        startTime = new Date(); // Get the new current time every time we update
+        generateTable(rowCount, users, categories); // Regenerate the table with updated time
     }
 
     // Initial table generation
