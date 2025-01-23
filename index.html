@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dynamic Table</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Include Firebase SDK -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Dynamic Table with Time, Users, and Categories</h1>
+        <h1>Minuto a Minuto</h1>
         <table id="userTable">
             <thead>
                 <tr>
@@ -22,6 +25,6 @@
             </tbody>
         </table>
     </div>
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
