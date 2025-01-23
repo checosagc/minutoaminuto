@@ -1,36 +1,87 @@
-document.addEventListener('DOMContentLoaded', () => {
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJsUMdYR-sNUCv8jvqSB6zKby6I-l_9eA",
+            authDomain: "gdlyork2025.firebaseapp.com",
+            projectId: "gdlyork2025",
+            storageBucket: "gdlyork2025.firebasestorage.app",
+            messagingSenderId: "426698963480",
+            appId: "1:426698963480:web:61b4494074290f4964e16d",
+            measurementId: "G-Y4VC9D8HSD"
+        };
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Obtener datos de categorías y competidores
+const fetchCategoriesAndCompetitors = async () => {
+    const snapshot = await get(ref(db, 'categorias/'));
+    if (snapshot.exists()) {
+        return snapshot.val();
+    } else {
+        console.log("No hay datos disponibles en 'categorias/'");
+        return {};
+    }
+};
+
+// Escuchar cuando el DOM está cargado
+document.addEventListener('DOMContentLoaded', async () => {
     const tableBody = document.querySelector('#userTable tbody');
+    const minutesIncrement = 5; // Incremento de minutos
+    let selectedRow = 0; // Fila seleccionada (por defecto)
+    let rowCount = 0; // Número total de filas (se ajustará dinámicamente)
+    let useFirebaseTime = false;
+    let initialTime = new Date(); // Hora inicial local por defecto
+    let defautlTime=new Date();
 
-    // Configuration
-    const rowCount = 11; // Number of rows
-    const users = [
-        'Alice', 'Bob', 'Charlie', 'David', 'Emma', 'Fiona', 'George', 'Hannah', 'Ian', 'Julia'
-    ];
-    const categories = [
-        'Cat1', 'Cat2', 'Cat3', 'Cat4', 'Cat5', 'Cat6', 'Cat7', 'Cat8', 'Cat9', 'Cat10'
-    ];
-    const minutesIncrement = 5; // Minutes between each row
-    const secondsIncrement = 0; // Seconds between each row
+    // Obtener datos de Firebase
+    const categoriesData = await fetchCategoriesAndCompetitors();
+    const categories = Object.keys(categoriesData);
+    const users = [];
 
-    let startTime = new Date(); // Get the current time from the client
+    // Calcular el total de competidores y llenar la lista de usuarios
+    categories.forEach(category => {
+        const categoryData = categoriesData[category];
+        Object.keys(categoryData).forEach(competitorId => {
+            users.push({ name: categoryData[competitorId], category });
+        });
+    });
+
+    rowCount = users.length; // Ajustar rowCount al número total de competidores
 
     function formatTime(date) {
-        return date.toTimeString().split(' ')[0]; // Format as HH:MM:SS
+        return date.toTimeString().split(' ')[0]; // Formato HH:MM:SS
     }
 
-    function generateTable(rows, userList, categoryList) {
-        tableBody.innerHTML = ''; // Clear table body
+    function generateTable(rows, userList, selectedRowIndex) {
+        tableBody.innerHTML = ''; // Limpiar cuerpo de la tabla
 
         for (let i = 0; i < rows; i++) {
             const timeCell = document.createElement('td');
             const userCell = document.createElement('td');
             const categoryCell = document.createElement('td');
 
-            const currentTime = new Date(startTime.getTime() + i * (minutesIncrement * 60000 + secondsIncrement * 1000)); // Increment by configured minutes and seconds
+            // Calcular el tiempo basado en la fila seleccionada
+            const offset = (i - selectedRowIndex) * minutesIncrement * 60000;
+            const currentTime = new Date(initialTime.getTime() + offset);
 
-            timeCell.textContent = formatTime(currentTime);
-            userCell.textContent = userList[i % userList.length]; // Loop through users if more rows than users
-            categoryCell.textContent = categoryList[i % categoryList.length]; // Loop through categories if more rows than categories
+            if (i < selectedRowIndex) {
+                // Si la fila está antes de la seleccionada, mostrar "Finished" en verde
+                timeCell.textContent = 'Finished';
+                timeCell.style.color = 'green';
+            } else {
+                // Mostrar la hora calculada
+                timeCell.textContent = formatTime(currentTime);
+            }
+
+            // Obtener datos del usuario y la categoría
+            const user = userList[i % userList.length]; // Ciclar si hay más filas que usuarios
+            userCell.textContent = user.name; // Nombre del competidor
+            categoryCell.textContent = user.category; // Nombre de la categoría
 
             const row = document.createElement('tr');
             row.appendChild(timeCell);
@@ -40,15 +91,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Function to update the time every 5 seconds
-    function updateTime() {
-        startTime = new Date(); // Get the new current time every time we update
-        generateTable(rowCount, users, categories); // Regenerate the table with updated time
-    }
+    // Escuchar cambios en 'admin/hora' y 'admin/activarReloj'
+    onValue(ref(db, 'admin/activarReloj'), snapshot => {
+        useFirebaseTime = snapshot.val();
+    });
 
-    // Initial table generation
-    generateTable(rowCount, users, categories);
+    onValue(ref(db, 'admin/hora'), snapshot => {
+        if (useFirebaseTime && snapshot.exists()) {
+            initialTime = new Date(snapshot.val());
+            defautlTime=initialTime;
+            generateTable(rowCount, users, selectedRow);
+        }
+    });
 
-    // Update time every 5 seconds
-    setInterval(updateTime, 5000); // Adjust interval as needed
+    // Escuchar cambios en 'admin/selectedRow'
+    onValue(ref(db, 'admin/selectedRow'), snapshot => {
+        if (snapshot.exists()) {
+            selectedRow = snapshot.val(); // Actualizar el valor de selectedRow
+            generateTable(rowCount, users, selectedRow); // Regenerar la tabla
+        }
+    });
+
+    // Actualizar la tabla cada 5 segundos con la hora actualizada si `activarReloj` es `false`
+    setInterval(() => {
+        if (!useFirebaseTime) {
+            initialTime = new Date(); // Actualizar hora inicial local
+            generateTable(rowCount, users, selectedRow);
+        }
+        else{
+            initialTime=defautlTime;
+            generateTable(rowCount, users, selectedRow);
+        }
+        
+    }, 1000);
 });
